@@ -65,7 +65,7 @@ def agregar_log(cedula, tipo_documento,operacion, detalles):
 @app.route('/registrar', methods=['POST'])
 def registrar():
     data = request.form
-    foto = request.files["Foto"]
+    foto = request.files
 
     #Consultar si la persona existe
     consulta_response = cursor.execute("SELECT * FROM Registro WHERE NumeroDocumento=?", data['NumeroDocumento'])
@@ -91,8 +91,8 @@ def registrar():
     if not validar_apellidos(data['Apellidos']):
         return jsonify({"error": "Apellidos no válidos"}), 400
 
-    #if not validar_fecha_nacimiento(data['FechaNacimiento']):
-        #return jsonify({"error": "Fecha de nacimiento no válida"}), 400
+    if not validar_fecha_nacimiento(data['FechaNacimiento']):
+        return jsonify({"error": "Fecha de nacimiento no válida"}), 400
 
     if not validar_genero(data['Genero']):
         return jsonify({"error": "Género no válido"}), 400
