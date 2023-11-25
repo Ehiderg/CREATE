@@ -58,9 +58,8 @@ def validar_celular(celular):
     return celular.isdigit() and len(celular) == 10
 
 def validar_tamano_foto(foto):
-    
-    decoded_image = base64.b64encode(foto)
-    return len(decoded_image) <= 2 * 1024 * 1024  # 2 MB en bytes
+    encoded_image = base64.b64encode(foto)
+    return len(encoded_image) <= 2 * 1024 * 1024  # 2 MB en bytes
 
 def agregar_log(cedula, tipo_documento,operacion, detalles):
     # Agregar registro al log
@@ -71,6 +70,7 @@ def agregar_log(cedula, tipo_documento,operacion, detalles):
 @app.route('/registrar', methods=['POST'])
 def registrar():
     data = request.json
+    foto = request.files["uploadimg"]
 
     #Consultar si la persona existe
     consulta_response = cursor.execute("SELECT * FROM Registro WHERE NumeroDocumento=?", data['NumeroDocumento'])
@@ -108,14 +108,29 @@ def registrar():
     if not validar_celular(data['Celular']):
         return jsonify({"error": "Número de celular no válido"}), 400
     
-    if 'Foto' in data and not validar_tamano_foto(data['Foto']):
-         return jsonify({"error": "Tamaño de la foto excede el límite permitido (2 MB)"}), 400
-    
+   
+    if foto:
+        if not validar_tamano_foto(foto):
+            return jsonify({"error": "Tamaño de la foto excede el límite permitido (2 MB)"}), 400
+
+        filename, file_extension = os.path.rsplit('.', 1)
+
+        if not allowed_file(file_extension):
+            return jsonify({"error": "Tipo de archivo no permitido"}), 400
+
+        filename = secure_filename(f"{data['NumeroDocumento']}.{file_extension}")
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        # Verificar de que el directorio de carga exista
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        
+        with open(filepath, 'wb') as f:
+            f.write(foto)    
     # Insertar en la base de datos
     cursor.execute("INSERT INTO Registro VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                    data['TipoDocumento'], data['NumeroDocumento'], data['PrimerNombre'],
                    data['SegundoNombre'], data['Apellidos'], data['FechaNacimiento'],
-                   data['Genero'], data['CorreoElectronico'], data['Celular'], data['Foto'])
+                   data['Genero'], data['CorreoElectronico'], data['Celular'], filepath)
     conn.commit()
 
     # Agregar la operación al log
