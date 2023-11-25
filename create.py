@@ -25,7 +25,6 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-
 def validar_tipo_documento(tipo_documento):
     return tipo_documento in ['Tarjeta de identidad', 'Cédula']
 
@@ -57,10 +56,6 @@ def validar_correo(correo):
 def validar_celular(celular):
     return celular.isdigit() and len(celular) == 10
 
-def validar_tamano_foto(foto):
-    encoded_image = base64.b64encode(foto)
-    return len(encoded_image) <= 2 * 1024 * 1024  # 2 MB en bytes
-
 def agregar_log(cedula, tipo_documento,operacion, detalles):
     # Agregar registro al log
     cursor.execute("INSERT INTO Log (CedulaPersona, TipoDocumento,Operacion, FechaOperacion, Detalles) VALUES (?, ?, ?, ?, ?)",
@@ -69,8 +64,8 @@ def agregar_log(cedula, tipo_documento,operacion, detalles):
 
 @app.route('/registrar', methods=['POST'])
 def registrar():
-    data = request.json
-    foto = request.files["uploadimg"]
+    data = request.form
+    foto = request.files["Foto"]
 
     #Consultar si la persona existe
     consulta_response = cursor.execute("SELECT * FROM Registro WHERE NumeroDocumento=?", data['NumeroDocumento'])
@@ -110,22 +105,15 @@ def registrar():
     
    
     if foto:
-        if not validar_tamano_foto(foto):
-            return jsonify({"error": "Tamaño de la foto excede el límite permitido (2 MB)"}), 400
 
-        filename, file_extension = os.path.rsplit('.', 1)
-
-        if not allowed_file(file_extension):
-            return jsonify({"error": "Tipo de archivo no permitido"}), 400
-
-        filename = secure_filename(f"{data['NumeroDocumento']}.{file_extension}")
+        filename = secure_filename(f"{data['NumeroDocumento']}.jpg")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
         # Verificar de que el directorio de carga exista
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         
         with open(filepath, 'wb') as f:
-            f.write(foto)    
+            f.write(foto.read( ))    
     # Insertar en la base de datos
     cursor.execute("INSERT INTO Registro VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                    data['TipoDocumento'], data['NumeroDocumento'], data['PrimerNombre'],
