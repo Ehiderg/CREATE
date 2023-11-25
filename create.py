@@ -4,6 +4,9 @@ import re
 from datetime import datetime
 import base64
 from flask_cors import CORS
+import os
+from werkzeug.utils import secure_filename
+
 
 
 app = Flask(__name__)
@@ -12,6 +15,16 @@ CORS(app)
 conn_str = 'DRIVER={SQL Server};SERVER=diseno2.database.windows.net;DATABASE=Diseño;UID=ehiderg;PWD=Diseño2023'
 conn = pyodbc.connect(conn_str)
 cursor = conn.cursor()
+
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 
 def validar_tipo_documento(tipo_documento):
     return tipo_documento in ['Tarjeta de identidad', 'Cédula']
@@ -23,12 +36,12 @@ def validar_nombre(nombre):
     return nombre.isalpha() and len(nombre) <= 30
 
 def validar_apellidos(apellidos):
-    return apellidos.isalpha() and len(apellidos) <= 60
+    return all(caracter.isalpha() or caracter.isspace() for caracter in apellidos) and len(apellidos) <= 60
 
 def validar_fecha_nacimiento(fecha_nacimiento):
     try:
         # Intenta parsear la fecha
-        datetime.datetime.strptime(fecha_nacimiento, '%d-%b-%Y')
+        datetime.strptime(fecha_nacimiento, '%d-%b-%Y')
         return True
     except ValueError:
         return False
@@ -45,8 +58,8 @@ def validar_celular(celular):
     return celular.isdigit() and len(celular) == 10
 
 def validar_tamano_foto(foto):
-    # Este código asume que la imagen está codificada en base64
-    decoded_image = base64.b64decode(foto)
+    
+    decoded_image = base64.b64encode(foto)
     return len(decoded_image) <= 2 * 1024 * 1024  # 2 MB en bytes
 
 def agregar_log(cedula, tipo_documento,operacion, detalles):
@@ -94,10 +107,10 @@ def registrar():
 
     if not validar_celular(data['Celular']):
         return jsonify({"error": "Número de celular no válido"}), 400
-
+    
     if 'Foto' in data and not validar_tamano_foto(data['Foto']):
-        return jsonify({"error": "Tamaño de la foto excede el límite permitido (2 MB)"}), 400
-
+         return jsonify({"error": "Tamaño de la foto excede el límite permitido (2 MB)"}), 400
+    
     # Insertar en la base de datos
     cursor.execute("INSERT INTO Registro VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                    data['TipoDocumento'], data['NumeroDocumento'], data['PrimerNombre'],
