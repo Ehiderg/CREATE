@@ -91,8 +91,8 @@ def registrar():
     if not validar_apellidos(data['Apellidos']):
         return jsonify({"error": "Apellidos no válidos"}), 400
 
-    if not validar_fecha_nacimiento(data['FechaNacimiento']):
-        return jsonify({"error": "Fecha de nacimiento no válida"}), 400
+    #if not validar_fecha_nacimiento(data['FechaNacimiento']):
+        #return jsonify({"error": "Fecha de nacimiento no válida"}), 400
 
     if not validar_genero(data['Genero']):
         return jsonify({"error": "Género no válido"}), 400
@@ -103,17 +103,19 @@ def registrar():
     if not validar_celular(data['Celular']):
         return jsonify({"error": "Número de celular no válido"}), 400
     
-   
+    filename, file_extension = os.path.splitext(foto.filename)
+ 
+
     if foto:
 
-        filename = secure_filename(f"{data['NumeroDocumento']}.jpg")
+        filename = secure_filename(f"{data['NumeroDocumento']}{file_extension}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
         # Verificar de que el directorio de carga exista
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         
         with open(filepath, 'wb') as f:
-            f.write(foto.read( ))    
+            f.write(foto.read())    
     # Insertar en la base de datos
     cursor.execute("INSERT INTO Registro VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                    data['TipoDocumento'], data['NumeroDocumento'], data['PrimerNombre'],
